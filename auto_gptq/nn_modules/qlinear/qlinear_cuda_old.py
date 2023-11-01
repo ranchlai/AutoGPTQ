@@ -265,9 +265,19 @@ class QuantLinear(nn.Module):
                raise NotImplementedError("Only 2,3,4,8 bits are supported.")
             weight = (scales * (weight - zeros))
             weight = weight.reshape(weight.shape[0] * weight.shape[1], weight.shape[2])
-
-            out = torch.matmul(x.half(), weight)
-        out = out.half().reshape(out_shape)
+            # if x or weight in float32, put all in float32
+            import pdb; pdb.set_trace()
+            if x.dtype == torch.float32 or weight.dtype == torch.float32:
+                x = x.float()
+                weight = weight.float()
+                out = torch.matmul(x, weight)
+            else:
+                x = x.half()
+                weight = weight.half()
+                out = torch.matmul(x.half(), weight).half()
+                
+                
+        out = out.reshape(out_shape)
         out = out + self.bias if self.bias is not None else out
         return out
 
