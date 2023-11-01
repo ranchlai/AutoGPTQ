@@ -196,16 +196,20 @@ class QuantLinear(nn.Module):
     def forward(self, x: torch.Tensor):
         out_shape = x.shape[:-1] + (self.outfeatures,)
         x = x.reshape(-1, x.shape[-1])
-        if self.autogptq_cuda_available and (
+        if False and self.autogptq_cuda_available and (
             self.kernel_switch_threshold == 0 or x.shape[0] < self.kernel_switch_threshold
         ):
+            
             out = torch.zeros((x.shape[0], self.outfeatures), device=x.device, dtype=torch.float32)
             if self.bits == 2:
                 self.autogptq_cuda.vecquant2matmul(x.float(), self.qweight, out, self.scales.float(), self.qzeros, self.g_idx)
             elif self.bits == 3:
                 self.autogptq_cuda.vecquant3matmul(x.float(), self.qweight, out, self.scales.float(), self.qzeros, self.g_idx)
             elif self.bits == 4:
+                import pdb; pdb.set_trace()
+                self.autogptq_cuda.vecquant4matmul(x.float(), self.qweight.to("cuda"), out, self.scales.float().to("cuda"), self.qzeros.to("cuda"), self.g_idx.to("cuda"))
                 self.autogptq_cuda.vecquant4matmul(x.float(), self.qweight, out, self.scales.float(), self.qzeros, self.g_idx)
+                
             elif self.bits == 8:
                 self.autogptq_cuda.vecquant8matmul(x.float(), self.qweight, out, self.scales.float(), self.qzeros, self.g_idx)
             else:
@@ -267,9 +271,14 @@ class QuantLinear(nn.Module):
                     g_idx_i = self.g_idx[i*num_dim:(i+1)*num_dim]
                     weights.append(scale_i[g_idx_i.long()] * (weight_i - zeros_i[g_idx_i.long()]))
                 weights = torch.cat(weights,dim=1)
-            out = torch.matmul(x.half(), weights)
+            # if any of x and weights in float32, the result will be float32
+            if x.dtype == torch.float32 or weights.dtype == torch.float32:
+                out = torch.matmul(x.float(), weights.float().to(x.device))
+            else:
+                out = torch.matmul(x.half(), weights.half().to(x.device))
+                
         out = out.half().reshape(out_shape)
-        out = out + self.bias if self.bias is not None else out
+        out = out + self.bias.to(out.device) if self.bias is not None else out
         return out
 
 

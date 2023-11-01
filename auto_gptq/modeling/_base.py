@@ -1,5 +1,6 @@
 import copy
 import json
+import time
 import warnings
 import os
 from dataclasses import dataclass, field, fields
@@ -311,6 +312,8 @@ class BaseGPTQForCausalLM(nn.Module, PushToHubMixin):
         if not self.quantize_config.true_sequential:
             inside_layer_modules = [sum(inside_layer_modules, [])]
         quantizers = {}
+        t0 = time.time()
+        
         for i in range(len(layers)):
             logger.info(f"Start quantizing layer {i + 1}/{len(layers)}")
             layer = layers[i]
@@ -422,6 +425,12 @@ class BaseGPTQForCausalLM(nn.Module, PushToHubMixin):
         self._quantized = True
 
         torch.cuda.empty_cache()
+        
+        elapsed_time = time.time() - t0
+        estimated_time = elapsed_time * (len(layers) - i - 1) / (i + 1)
+        logger.info(f"Elapsed time: {elapsed_time / 60:.2f} minutes")
+        logger.info(f"Estimated time left: {estimated_time / 60:.2f} minutes")
+
 
     @property
     def device(self):
