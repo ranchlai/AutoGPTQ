@@ -266,7 +266,6 @@ class QuantLinear(nn.Module):
             weight = (scales * (weight - zeros))
             weight = weight.reshape(weight.shape[0] * weight.shape[1], weight.shape[2])
             # if x or weight in float32, put all in float32
-            import pdb; pdb.set_trace()
             if x.dtype == torch.float32 or weight.dtype == torch.float32:
                 x = x.float()
                 weight = weight.float()

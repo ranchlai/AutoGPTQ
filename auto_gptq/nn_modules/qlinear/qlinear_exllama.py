@@ -61,7 +61,8 @@ class QuantLinear(nn.Module):
         self.maxq = 2 ** self.bits - 1
 
         assert infeatures % 32 == 0
-        assert infeatures % self.group_size == 0
+        if infeatures % self.group_size != 0:
+            raise ValueError(f"Group size {self.group_size} must divide infeatures {infeatures}.")
         assert outfeatures % 32 == 0
 
         self.register_buffer(

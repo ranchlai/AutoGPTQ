@@ -57,12 +57,13 @@ class GPTQ:
         # inp = inp.float()
         inp = math.sqrt(2 / self.nsamples) * inp.float()
         # self.H += 2 / self.nsamples * inp.matmul(inp.t())
+        self.H = self.H.to(inp.device)
         self.H += inp.matmul(inp.t())
 
     def fasterquant(
         self, blocksize=128, percdamp=.01, group_size=-1, actorder=False, static_groups=False
     ):
-        W = self.layer.weight.data.clone()
+        W = self.layer.weight.data.clone().to("cuda:0")
         if isinstance(self.layer, nn.Conv2d):
             W = W.flatten(1)
         if isinstance(self.layer, transformers.Conv1D):

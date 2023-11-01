@@ -197,9 +197,14 @@ def pack_model(
     layers = {n: layers[n] for n in quantizers}
     make_quant(model, quantizers, bits, group_size, use_triton=use_triton, use_cuda_fp16=use_cuda_fp16, desc_act=desc_act)
     qlayers = find_layers(model, [QuantLinear])
+<<<<<<< HEAD
     # time the packing process
     t0 = time.time()
     for i, name in enumerate(qlayers):
+=======
+    t0 = time.time()
+    for name in qlayers:
+>>>>>>> 8dad51fbf6760dc68a2a93d8a1501890a67e9378
         logger.info(name)
         quantizers[name], scale, zero, g_idx = quantizers[name]
         # so far can only pack layer on CPU
@@ -209,6 +214,10 @@ def pack_model(
         qlayers[name].pack(layers[name], scale, zero, g_idx)
         qlayers[name].to(layer_device)
         
+<<<<<<< HEAD
+=======
+           
+>>>>>>> 8dad51fbf6760dc68a2a93d8a1501890a67e9378
         elapsed = time.time() - t0
         # time in minutes
         logger.info(f'Packing {name} took {elapsed / 60:.2f}m')
