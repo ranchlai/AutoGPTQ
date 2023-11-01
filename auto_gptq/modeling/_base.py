@@ -18,7 +18,7 @@ from transformers import AutoConfig, AutoModelForCausalLM, PreTrainedModel
 from transformers.utils.hub import PushToHubMixin, cached_file, create_repo, create_commit, CommitOperationAdd
 from transformers.utils.generic import ContextManagers
 from transformers.modeling_utils import no_init_weights
-
+import time
 from ._const import *
 from ._utils import *
 from ..nn_modules.qlinear import GeneralQuantLinear
@@ -312,6 +312,8 @@ class BaseGPTQForCausalLM(nn.Module, PushToHubMixin):
         if not self.quantize_config.true_sequential:
             inside_layer_modules = [sum(inside_layer_modules, [])]
         quantizers = {}
+        # time the quantization process, print the estimated time
+        t0 = time.time()
         for i in range(len(layers)):
             logger.info(f"Start quantizing layer {i + 1}/{len(layers)}")
             layer = layers[i]
@@ -403,6 +405,11 @@ class BaseGPTQForCausalLM(nn.Module, PushToHubMixin):
             del layer_inputs
             layer_inputs, layer_outputs = layer_outputs, []
             torch.cuda.empty_cache()
+            
+            elapsed_time = time.time() - t0
+            estimated_time = elapsed_time * (len(layers) - i - 1) / (i + 1)
+            logger.info(f"Elapsed time: {elapsed_time / 60:.2f} minutes")
+            logger.info(f"Estimated time left: {estimated_time / 60:.2f} minutes")
 
         pack_model(
             model=self.model,

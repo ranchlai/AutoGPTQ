@@ -1,4 +1,4 @@
-from logging import getLogger
+# from logging import getLogger
 from typing import Union, Optional
 
 import accelerate
@@ -6,11 +6,12 @@ import torch
 import torch.nn as nn
 from transformers import AutoConfig
 import transformers
-
+import time
 from ._const import SUPPORTED_MODELS, CPU, CUDA_0, EXLLAMA_DEFAULT_MAX_INPUT_LENGTH
 from ..utils.import_utils import dynamically_import_QuantLinear
 
-logger = getLogger(__name__)
+# logger = getLogger(__name__)
+from loguru import logger
 
 
 def get_device(obj: Union[torch.Tensor, nn.Module]):
@@ -196,7 +197,9 @@ def pack_model(
     layers = {n: layers[n] for n in quantizers}
     make_quant(model, quantizers, bits, group_size, use_triton=use_triton, use_cuda_fp16=use_cuda_fp16, desc_act=desc_act)
     qlayers = find_layers(model, [QuantLinear])
-    for name in qlayers:
+    # time the packing process
+    t0 = time.time()
+    for i, name in enumerate(qlayers):
         logger.info(name)
         quantizers[name], scale, zero, g_idx = quantizers[name]
         # so far can only pack layer on CPU
@@ -205,6 +208,13 @@ def pack_model(
         layers[name], scale, zero, g_idx = layers[name].to(CPU), scale.to(CPU), zero.to(CPU), g_idx.to(CPU)
         qlayers[name].pack(layers[name], scale, zero, g_idx)
         qlayers[name].to(layer_device)
+        
+        elapsed = time.time() - t0
+        # time in minutes
+        logger.info(f'Packing {name} took {elapsed / 60:.2f}m')
+        eta = elapsed / (i + 1) * (len(qlayers) - i - 1)
+        logger.info(f'ETA: {eta / 60:.2f}m')
+        
     logger.info('Model packed.')
 
     if use_triton and warmup_triton:
